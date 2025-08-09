@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import itertools
+import logging
 import os
 import re
 import sys
@@ -13,7 +13,9 @@ from typing import override
 
 import torch
 import typer
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, PreTrainedModel
+
+logger = logging.getLogger(__name__)
 
 Constraint = Callable[[Sequence[str], str], bool]
 
@@ -48,6 +50,11 @@ class LLM:
             device_map="auto",
         )
         self._temperature = temperature
+
+    @property
+    def model(self) -> PreTrainedModel:
+        """Return the model."""
+        return self._model
 
     def prompt_to_tokens(self, prompt: str) -> torch.Tensor:
         """Return the state after reading the given prompt."""
@@ -253,7 +260,9 @@ def constraint_pi(sequence: Sequence[str], token: str) -> bool:
     """Check that the lengths of the words in the sequence form the digits of pi."""
     full = "".join([*sequence, token])
     return not any(letter in token for letter in "*0123456789")
-    lens = [len(s) % 10 for s in re.split(r"[ \n]*[;,.'!?]+[ \n]*|[ \n]+", full) if s != ""]
+    lens = [
+        len(s) % 10 for s in re.split(r"[ \n]*[;,.'!?]+[ \n]*|[ \n]+", full) if s != ""
+    ]
     if len(lens) == 0:
         return True
     digits = pi_digits()
@@ -261,17 +270,29 @@ def constraint_pi(sequence: Sequence[str], token: str) -> bool:
         -1
     ] <= next(digits)
 
+
 constraints = {
     "e": constraint_no_e,
     "pi": constraint_pi,
 }
 
 
-def main(prompt: str, model_name: str, lookup_count: int, lookup_depth: int, constraint_name: str) -> None:
+def main(
+    prompt: str,
+    model_name: str,
+    lookup_count: int,
+    lookup_depth: int,
+    constraint_name: str,
+) -> None:
     """Entry-point."""
+    logging.basicConfig(encoding='utf-8', level=logging.INFO)
     token = os.environ.get("HF_TOKEN")
     llm = LLM(model_name, token)
-    answer = answer_prompt(llm, prompt, lookup_count, lookup_depth, constraints[constraint_name])
+    device = next(llm.model.parameters()).device
+    logger.info(f"Device: {device}")
+    answer = answer_prompt(
+        llm, prompt, lookup_count, lookup_depth, constraints[constraint_name]
+    )
     while True:
         sys.stdout.write(next(answer))
         sys.stdout.flush()
