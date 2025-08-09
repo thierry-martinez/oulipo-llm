@@ -11,6 +11,7 @@ from oulipo_llm import (
     ChoiceNode,
     answer_prompt,
     constraint_no_e,
+    constraint_pi,
 )
 
 
@@ -79,3 +80,27 @@ def test_answer_prompt(fx_token: str, fx_model_name: str) -> None:
     assert len(answer_list) == token_count
     for token in answer_list:
         assert constraint_no_e([], token)
+
+
+def test_constraint_pi() -> None:
+    """Test the constraint of digits of pi."""
+    assert constraint_pi(
+        [],
+        "Que j'aime à faire apprendre un nombre utile aux sages ! Immortel Archimède, artiste, ingénieur, qui de ton jugement peut priser la valeur ? Pour moi ton problème eut de sérieux avantages !",  # noqa: E501
+    )
+    assert not constraint_pi(
+        [],
+        "Que j'aime à faire apprendre un nombre utile aux sages ! Immortel Archimède, artiste, ingénieur, qui de ton jugement peut priser la grandeur ? Pour moi ton problème eut de sérieux avantages !",  # noqa: E501
+    )
+    assert constraint_pi(
+        [],
+        "Que j'aime à faire apprendre un nombre utile aux sages ! Immortel Archimède, artiste, ingénieur, qui de ton jugement peut priser la valeur ? Pour moi ton problème eut de sérieux av !",  # noqa: E501
+    )
+    assert not constraint_pi(
+        [],
+        "Que j'aime à faire apprendre un nombre utile aux sages ! Immortel Archimède, artiste, ingénieur, qui de ton jugement peut priser la valeur ? Pour moi ton problème eut de sérieuses !",  # noqa: E501
+    )
+    assert not constraint_pi(
+        [],
+        "  \nIl s'",
+    )

@@ -7,6 +7,7 @@ from oulipo_llm.oulipo_llm import (
     ChoiceNode,
     answer_prompt,
     constraint_no_e,
+    constraint_pi,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "ChoiceNode",
     "answer_prompt",
     "constraint_no_e",
+    "constraint_pi",
 ]

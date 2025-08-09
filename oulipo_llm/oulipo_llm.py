@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import itertools
 import os
+import re
 import sys
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator, Sequence
@@ -222,14 +224,54 @@ def answer_prompt(
 
 def constraint_no_e(_sequence: Sequence[str], token: str) -> bool:
     """Check that a token contains no 'e'."""
-    return not any(letter in token for letter in "eéèëEÉÈêÊË")
+    return not any(letter in token for letter in "eéèëEÉÈêÊË0123456789")
 
 
-def main(prompt: str, model_name: str, lookup_count: int, lookup_depth: int) -> None:
+def pi_digits() -> Iterator[int]:
+    """Yield digits of pi one by one."""
+    q, r, t, k, n, l = 1, 0, 1, 1, 3, 3  # noqa: E741
+    while True:
+        if 4 * q + r - t < n * t:
+            yield n
+            q, r, n = (
+                10 * q,
+                10 * (r - n * t),
+                ((10 * (3 * q + r)) // t) - 10 * n,
+            )
+        else:
+            q, r, t, k, n, l = (  # noqa: E741
+                q * k,
+                (2 * q + r) * l,
+                t * l,
+                k + 1,
+                (q * (7 * k + 2) + r * l) // (t * l),
+                l + 2,
+            )
+
+
+def constraint_pi(sequence: Sequence[str], token: str) -> bool:
+    """Check that the lengths of the words in the sequence form the digits of pi."""
+    full = "".join([*sequence, token])
+    return not any(letter in token for letter in "*0123456789")
+    lens = [len(s) % 10 for s in re.split(r"[ \n]*[;,.'!?]+[ \n]*|[ \n]+", full) if s != ""]
+    if len(lens) == 0:
+        return True
+    digits = pi_digits()
+    return all(length == d for length, d in zip(lens[:-1], digits)) and lens[
+        -1
+    ] <= next(digits)
+
+constraints = {
+    "e": constraint_no_e,
+    "pi": constraint_pi,
+}
+
+
+def main(prompt: str, model_name: str, lookup_count: int, lookup_depth: int, constraint_name: str) -> None:
     """Entry-point."""
     token = os.environ.get("HF_TOKEN")
     llm = LLM(model_name, token)
-    answer = answer_prompt(llm, prompt, lookup_count, lookup_depth, constraint_no_e)
+    answer = answer_prompt(llm, prompt, lookup_count, lookup_depth, constraints[constraint_name])
     while True:
         sys.stdout.write(next(answer))
         sys.stdout.flush()
