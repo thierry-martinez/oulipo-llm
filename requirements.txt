@@ -1,0 +1,4 @@
+accelerate>=1.10,<2
+torch>=2.8,<3
+transformers>=4.55,<5
+typer>=0.16,<1
